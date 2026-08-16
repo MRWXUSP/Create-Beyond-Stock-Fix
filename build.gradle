@@ -85,6 +85,13 @@ dependencies {
 // NeoForge 1.21.1 开发与生产均为 Mojmap，无需 refmap / 重混淆；
 // MDG 2.0.116 会自动处理 mixin 注解处理器与 jar 清单中的 MixinConfigs。
 
+// Include Licenses
+tasks.named('processResources', ProcessResources).configure {
+    from(rootProject.file('LICENSE')) {
+        into 'META-INF'
+    }
+}
+
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
