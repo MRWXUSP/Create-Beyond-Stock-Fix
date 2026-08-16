@@ -119,6 +119,13 @@ jar {
     ])
 }
 
+// Include Licenses
+tasks.named('processResources', ProcessResources).configure {
+    from(rootProject.file('LICENSE')) {
+        into 'META-INF'
+    }
+}
+
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
