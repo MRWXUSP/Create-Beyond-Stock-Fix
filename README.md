@@ -15,7 +15,7 @@
 # 产物：build/libs/create-beyond-stock-fix-1.21.1-neoforge-1.0.0.jar
 ```
 
-开发运行（自动带上 Create、BeyondDimensions、Mekanism 等依赖）：
+开发运行（自动带上 Create、BeyondDimensions 等依赖）：
 
 ```bash
 ./gradlew runClient
