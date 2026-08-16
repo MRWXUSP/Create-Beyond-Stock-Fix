@@ -1,0 +1,6 @@
+run/
+build/
+libs/*.jar
+.idea/
+.vscode/
+*.log

@@ -1,0 +1,132 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    // 与 BeyondDimensions 1.20.1 分支一致的构建工具链（ModDevGradle legacyforge）
+    // 见 https://github.com/neoforged/ModDevGradle
+    id 'net.neoforged.moddev.legacyforge' version '2.0.91'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "create-beyond-stock-fix-${minecraft_version}-forge"
+}
+
+// Mojang ships Java 17 to end users in 1.20.1, so mods should target Java 17.
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+legacyForge {
+    // Specify the version of MinecraftForge to use.
+    version = project.minecraft_version + '-' + project.forge_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    // Default run configurations.
+    // These can be tweaked, removed, or duplicated as needed.
+    runs {
+        client {
+            client()
+        }
+
+        server {
+            server()
+            programArgument ''
+        }
+
+        // applies to all the run configs above
+        configureEach {
+            // Recommended logging data for a userdev environment
+            // The markers can be added/removed as needed separated by commas.
+            // "SCAN": For mods scan.
+            // "REGISTRIES": For firing of registry events.
+            // "REGISTRYDUMP": For getting the contents of all registries.
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+
+            // 导出 mixin 变换后的类，排查注入问题时使用
+            systemProperty 'mixin.debug.export', 'true'
+
+            // Recommended logging level for the console
+            // You can set various levels here.
+            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        // define mod <-> source bindings
+        // these are used to tell the game which sources are for which mod
+        // mostly optional in a single mod project
+        // but multi mod projects should define one per mod
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// Sets up a dependency configuration called 'localRuntime' and a deobfuscating one called 'modLocalRuntime'
+// These configurations should be used instead of 'runtimeOnly' to declare
+// a dependency that will be present for runtime testing but that is
+// "optional", meaning it will not be pulled by dependents of this mod.
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+obfuscation {
+    createRemappingConfiguration(configurations.localRuntime)
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://maven.createmod.net' }      // Create / Ponder / Flywheel
+    maven { url 'https://modmaven.dev/' }            // Mekanism
+    maven { url 'https://api.modrinth.com/maven' }   // Create（与 BD 1.20.1 相同的来源）
+}
+
+dependencies {
+    compileOnly "org.jetbrains:annotations:26.0.2"
+
+    // Create 6.0.8 for 1.20.1（生产 jar，其运行时依赖 Registrate/Ponder/Flywheel/vanillin 已 jarJar 内置）
+    modImplementation "maven.modrinth:create:mc1.20.1-6.0.8"
+
+    // catnip（BlockFace 等）编译期由 Ponder jar 提供（catnip 类被着色进 Ponder，Create 自身构建亦经此编译）；
+    // 运行期由 Create 生产 jar 内嵌的 Ponder 提供
+    compileOnly "net.createmod.ponder:Ponder-Forge-1.20.1:1.0.91"
+
+    // BeyondDimensions 1.20.1 —— 经 Modrinth Maven 引入（与 BD 自身构建引用 Create 的方式一致）。
+    // MDG 会自动把生产 jar 重映射为命名映射供编译与开发运行使用；运行期仍加载原始生产 jar。
+    modCompileOnly "maven.modrinth:beyonddimensions:0.7.27-1.20.1-forge"
+    modLocalRuntime "maven.modrinth:beyonddimensions:0.7.27-1.20.1-forge"
+
+    // BeyondDimensions 硬依赖 Mekanism，仅开发运行环境需要
+    modLocalRuntime "mekanism:Mekanism:1.20.1-10.4.16.80"
+
+    // Mixin（Forge 运行环境自带 mixin 库，此处仅编译期与注解处理器）
+    compileOnly 'org.spongepowered:mixin:0.8.5'
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
+}
+
+jar {
+    manifest.attributes([
+            "MixinConfigs": "${mod_id}.mixins.json"
+    ])
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
