@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "com.cbdfix.mixin",
+  "mixins": [
+    "PackagerBlockEntityMixin"
+  ],
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

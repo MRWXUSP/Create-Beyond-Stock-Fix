@@ -1,0 +1,98 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    // 与 BeyondDimensions 1.21.1 一致的构建工具链（ModDevGradle）
+    // 见 https://github.com/neoforged/ModDevGradle
+    id 'net.neoforged.moddev' version '2.0.116'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "create-beyond-stock-fix-${minecraft_version}-neoforge"
+}
+
+// Mojang ships Java 21 to end users in 1.21.1, so mods should target Java 21.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    // Specify the version of NeoForge to use.
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    // Default run configurations.
+    // These can be tweaked, removed, or duplicated as needed.
+    runs {
+        client {
+            client()
+        }
+
+        server {
+            server()
+            programArgument ''
+        }
+
+        // applies to all the run configs above
+        configureEach {
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+
+            // 导出 mixin 变换后的类，排查注入问题时使用
+            systemProperty 'mixin.debug.export', 'true'
+        }
+    }
+
+    mods {
+        // define mod <-> source bindings
+        // these are used to tell the game which sources are for which mod
+        // mostly optional in a single mod project
+        // but multi mod projects should define one per mod
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://maven.createmod.net' }      // Ponder
+    maven { url 'https://modmaven.dev/' }            // Mekanism
+    maven { url 'https://api.modrinth.com/maven' }   // Create / BeyondDimensions
+}
+
+dependencies {
+    compileOnly "org.jetbrains:annotations:26.0.2"
+
+    // Create 6.0.9 for 1.21.1 NeoForge（与 BD 1.21.1 相同的坐标；生产 jar 已 jarJar 内置运行时依赖）
+    compileOnly "maven.modrinth:create:mc1.21.1-6.0.9"
+    runtimeOnly "maven.modrinth:create:mc1.21.1-6.0.9"
+
+    // catnip（BlockFace 等）编译期由 Ponder jar 提供（catnip 类被着色进 Ponder）
+    compileOnly "net.createmod.ponder:Ponder-NeoForge-1.21.1:1.0.69"
+
+    // BeyondDimensions 0.7.27 for 1.21.1 NeoForge
+    compileOnly "maven.modrinth:beyonddimensions:0.7.27-1.21.1-neoforge"
+    runtimeOnly "maven.modrinth:beyonddimensions:0.7.27-1.21.1-neoforge"
+
+    // BeyondDimensions 硬依赖 Mekanism，仅开发运行环境需要
+    runtimeOnly "mekanism:Mekanism:1.21.1-10.7.18.84"
+}
+
+// NeoForge 1.21.1 开发与生产均为 Mojmap，无需 refmap / 重混淆；
+// MDG 2.0.116 会自动处理 mixin 注解处理器与 jar 清单中的 MixinConfigs。
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
